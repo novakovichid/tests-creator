@@ -51,6 +51,36 @@ p {
     opacity: 0.95;
 }
 
+.top-nav {
+    margin-top: 1.5rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.12);
+    padding: 0.4rem;
+    border-radius: 999px;
+}
+
+.nav-link {
+    color: #fff;
+    text-decoration: none;
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    font-weight: 500;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-link.active {
+    background: #fff;
+    color: var(--blue-primary);
+    box-shadow: 0 2px 8px rgba(0, 60, 140, 0.18);
+}
+
 .main-content {
     padding: 2rem 0 3rem;
     display: grid;
@@ -180,6 +210,94 @@ button:disabled {
 
 .tab-content.hidden {
     display: none;
+}
+
+.table-paste-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    min-height: 180px;
+    background: #f8faff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    cursor: text;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    outline: none;
+}
+
+.table-paste-area.focused,
+.table-paste-area:focus-visible {
+    border-color: var(--blue-accent);
+    box-shadow: 0 0 0 3px rgba(45, 114, 217, 0.18);
+    background: #fff;
+}
+
+.table-paste-area.has-table {
+    border-style: solid;
+    background: #fff;
+}
+
+.table-hint {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #4e5d8b;
+}
+
+.table-preview {
+    overflow-x: auto;
+}
+
+.table-placeholder {
+    color: #7d88aa;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.pasted-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.pasted-table th,
+.pasted-table td {
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 0.65rem;
+    vertical-align: top;
+    background: #fff;
+}
+
+.pasted-table th {
+    background: var(--blue-light);
+    font-weight: 600;
+    text-align: left;
+}
+
+.pasted-table td[contenteditable="true"] {
+    min-width: 140px;
+}
+
+.pasted-table td:focus {
+    outline: 2px solid var(--blue-accent);
+    outline-offset: -2px;
+}
+
+.pasted-table .remove-cell {
+    width: 48px;
+    text-align: center;
+    padding: 0;
+}
+
+.pasted-table .remove-cell button {
+    background: transparent;
+    color: var(--blue-primary);
+    font-size: 1.1rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.pasted-table .remove-cell button:hover {
+    color: var(--blue-accent);
 }
 
 .form-grid {
