@@ -39,6 +39,209 @@
     const editInput = document.getElementById('editInput');
     const editOutput = document.getElementById('editOutput');
 
+    const textareaAutoResize = new WeakMap();
+
+    const windows1251Specials = {
+        0x0402: 0x80,
+        0x0403: 0x81,
+        0x201A: 0x82,
+        0x0453: 0x83,
+        0x201E: 0x84,
+        0x2026: 0x85,
+        0x2020: 0x86,
+        0x2021: 0x87,
+        0x20AC: 0x88,
+        0x2030: 0x89,
+        0x0409: 0x8A,
+        0x2039: 0x8B,
+        0x040A: 0x8C,
+        0x040C: 0x8D,
+        0x040B: 0x8E,
+        0x040F: 0x8F,
+        0x0452: 0x90,
+        0x2018: 0x91,
+        0x2019: 0x92,
+        0x201C: 0x93,
+        0x201D: 0x94,
+        0x2022: 0x95,
+        0x2013: 0x96,
+        0x2014: 0x97,
+        0x2122: 0x99,
+        0x0459: 0x9A,
+        0x203A: 0x9B,
+        0x045A: 0x9C,
+        0x045C: 0x9D,
+        0x045B: 0x9E,
+        0x045F: 0x9F,
+        0x00A0: 0xA0,
+        0x040E: 0xA1,
+        0x045E: 0xA2,
+        0x0408: 0xA3,
+        0x00A4: 0xA4,
+        0x0490: 0xA5,
+        0x00A6: 0xA6,
+        0x00A7: 0xA7,
+        0x0401: 0xA8,
+        0x00A9: 0xA9,
+        0x0404: 0xAA,
+        0x00AB: 0xAB,
+        0x00AC: 0xAC,
+        0x00AD: 0xAD,
+        0x00AE: 0xAE,
+        0x0407: 0xAF,
+        0x00B0: 0xB0,
+        0x00B1: 0xB1,
+        0x0406: 0xB2,
+        0x0456: 0xB3,
+        0x0491: 0xB4,
+        0x00B5: 0xB5,
+        0x00B6: 0xB6,
+        0x00B7: 0xB7,
+        0x0451: 0xB8,
+        0x2116: 0xB9,
+        0x0454: 0xBA,
+        0x00BB: 0xBB,
+        0x0458: 0xBC,
+        0x0405: 0xBD,
+        0x0455: 0xBE,
+        0x0457: 0xBF
+    };
+
+    const windows1251Encoder = (() => {
+        let encodeMap = null;
+
+        function createMap() {
+            if (typeof TextDecoder === 'undefined') {
+                return null;
+            }
+            try {
+                const decoder = new TextDecoder('windows-1251', { fatal: false });
+                const map = new Map();
+                for (let byte = 0; byte <= 0xff; byte += 1) {
+                    const decoded = decoder.decode(new Uint8Array([byte]));
+                    if (decoded) {
+                        map.set(decoded.codePointAt(0), byte);
+                    }
+                }
+                return map;
+            } catch (error) {
+                console.warn('Не удалось инициализировать кодировщик Windows-1251, используется запасная схема.', error);
+                return null;
+            }
+        }
+
+        function encodeCodePoint(codePoint) {
+            if (encodeMap && encodeMap.has(codePoint)) {
+                return encodeMap.get(codePoint);
+            }
+            if (codePoint <= 0x7f) {
+                return codePoint;
+            }
+            if (codePoint >= 0x0410 && codePoint <= 0x044f) {
+                return 0xc0 + (codePoint - 0x0410);
+            }
+            if (windows1251Specials[codePoint] !== undefined) {
+                return windows1251Specials[codePoint];
+            }
+            return undefined;
+        }
+
+        return {
+            encode(value) {
+                const text = value === undefined || value === null ? '' : String(value);
+                if (!encodeMap) {
+                    encodeMap = createMap();
+                }
+                const bytes = [];
+                for (const symbol of text) {
+                    const codePoint = symbol.codePointAt(0);
+                    const encoded = encodeCodePoint(codePoint);
+                    if (encoded !== undefined) {
+                        bytes.push(encoded);
+                    } else {
+                        console.warn('Символ не может быть закодирован в Windows-1251, используется знак вопроса.', symbol, codePoint);
+                        bytes.push(0x3f);
+                    }
+                }
+                return new Uint8Array(bytes);
+            }
+        };
+    })();
+
+    function encodeWindows1251(value) {
+        return windows1251Encoder.encode(value);
+    }
+
+    function toNumeric(value) {
+        const number = parseFloat(value);
+        return Number.isNaN(number) ? 0 : number;
+    }
+
+    function computeTextareaMinHeight(textarea) {
+        const style = window.getComputedStyle(textarea);
+        const lineHeightValue = parseFloat(style.lineHeight);
+        const fontSizeValue = parseFloat(style.fontSize);
+        const lineHeight = Number.isNaN(lineHeightValue)
+            ? (Number.isNaN(fontSizeValue) ? 16 : fontSizeValue * 1.2)
+            : lineHeightValue;
+        const padding = toNumeric(style.paddingTop) + toNumeric(style.paddingBottom);
+        const border = toNumeric(style.borderTopWidth) + toNumeric(style.borderBottomWidth);
+        return Math.max(1, Math.ceil(lineHeight + padding + border));
+    }
+
+    function ensureTextareaAutoResize(textarea) {
+        if (!textarea || textareaAutoResize.has(textarea)) {
+            return;
+        }
+        const data = {
+            minHeight: computeTextareaMinHeight(textarea),
+            update: null
+        };
+        textarea.style.minHeight = `${data.minHeight}px`;
+        textarea.style.overflowY = 'hidden';
+        data.update = () => {
+            textarea.style.height = 'auto';
+            const nextHeight = Math.max(data.minHeight, textarea.scrollHeight);
+            textarea.style.height = `${nextHeight}px`;
+        };
+        textarea.addEventListener('input', data.update);
+        textareaAutoResize.set(textarea, data);
+        data.update();
+    }
+
+    function updateTextareaAutoHeight(textarea) {
+        if (!textarea) {
+            return;
+        }
+        if (!textareaAutoResize.has(textarea)) {
+            ensureTextareaAutoResize(textarea);
+        }
+        const data = textareaAutoResize.get(textarea);
+        if (!data) {
+            return;
+        }
+        const recalculatedMin = computeTextareaMinHeight(textarea);
+        if (recalculatedMin !== data.minHeight) {
+            data.minHeight = recalculatedMin;
+            textarea.style.minHeight = `${data.minHeight}px`;
+        }
+        data.update();
+    }
+
+    function initializeTextareaAutoResize() {
+        const elements = Array.from(document.querySelectorAll('textarea'));
+        elements.forEach(ensureTextareaAutoResize);
+        return elements;
+    }
+
+    function assignTextareaValue(textarea, value) {
+        if (!textarea) {
+            return;
+        }
+        textarea.value = value;
+        updateTextareaAutoHeight(textarea);
+    }
+
     function setStatus(message, type = 'info') {
         statusBox.textContent = message;
         statusBox.className = '';
@@ -116,7 +319,7 @@
         try {
             const solver = getSolver();
             const outputValue = await executeSolverOnInput(solver, singleInput.value);
-            singleOutput.value = outputValue;
+            assignTextareaValue(singleOutput, outputValue);
             setStatus('Выходные данные получены из решения.', 'success');
         } catch (error) {
             console.error('Ошибка выполнения решения', error);
@@ -224,8 +427,7 @@
                     .map(item => ({
                         input: typeof item.input === 'string' ? item.input : '',
                         output: typeof item.output === 'string' ? item.output : ''
-                    }))
-                    .filter(item => item.input !== '' || item.output !== '');
+                    }));
             }
             if (typeof state.archiveName === 'string' && state.archiveName.trim()) {
                 archiveNameInput.value = state.archiveName;
@@ -234,17 +436,13 @@
             }
             if (typeof state.problemStatement === 'string') {
                 problemStatementValue = state.problemStatement;
-                if (problemStatementInput) {
-                    problemStatementInput.value = problemStatementValue;
-                }
+                assignTextareaValue(problemStatementInput, problemStatementValue);
             } else {
                 problemStatementValue = '';
             }
             if (typeof state.solutionCode === 'string') {
                 solutionCodeValue = state.solutionCode;
-                if (solutionCodeInput) {
-                    solutionCodeInput.value = solutionCodeValue;
-                }
+                assignTextareaValue(solutionCodeInput, solutionCodeValue);
             } else {
                 solutionCodeValue = '';
             }
@@ -362,8 +560,8 @@
 
     function openEditModal(index) {
         currentEditIndex = index;
-        editInput.value = tests[index].input;
-        editOutput.value = tests[index].output;
+        assignTextareaValue(editInput, tests[index].input);
+        assignTextareaValue(editOutput, tests[index].output);
         editModal.classList.add('active');
         editModal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
@@ -377,34 +575,94 @@
         currentEditIndex = null;
     }
 
+    function detectDelimiter(text) {
+        if (text.includes('\t')) {
+            return '\t';
+        }
+        if (text.includes(';')) {
+            return ';';
+        }
+        if (text.includes(',')) {
+            return ',';
+        }
+        return '\t';
+    }
+
+    function parseDelimitedRows(text, delimiter) {
+        const rows = [];
+        let row = [];
+        let field = '';
+        let insideQuotes = false;
+
+        for (let index = 0; index < text.length; index += 1) {
+            const char = text[index];
+            if (char === '"') {
+                if (insideQuotes) {
+                    if (text[index + 1] === '"') {
+                        field += '"';
+                        index += 1;
+                    } else {
+                        insideQuotes = false;
+                    }
+                    continue;
+                }
+
+                if (field === '') {
+                    insideQuotes = true;
+                    continue;
+                }
+            }
+
+            if (!insideQuotes && char === delimiter) {
+                row.push(field);
+                field = '';
+                continue;
+            }
+
+            if (!insideQuotes && char === '\n') {
+                row.push(field);
+                rows.push(row);
+                row = [];
+                field = '';
+                continue;
+            }
+
+            field += char;
+        }
+
+        if (insideQuotes) {
+            throw new Error('Обнаружены незакрытые кавычки в табличных данных.');
+        }
+
+        row.push(field);
+        rows.push(row);
+
+        return rows;
+    }
+
     function parseBulkInput(rawText) {
-        const rows = rawText
-            .split(/\n/)
-            .map(line => line.replace(/\r$/, ''))
-            .filter(line => line.length > 0);
+        if (!rawText) {
+            return [];
+        }
+
+        const normalizedText = rawText.replace(/\r\n?/g, '\n');
+        const delimiter = detectDelimiter(normalizedText);
+        const rows = parseDelimitedRows(normalizedText, delimiter);
+
         if (!rows.length) {
             return [];
         }
-        const parsed = rows.map((row, index) => {
-            const sanitized = row.replace(/\r/g, '');
-            let parts;
-            if (sanitized.includes('\t')) {
-                parts = sanitized.split('\t');
-            } else if (sanitized.includes(';')) {
-                parts = sanitized.split(';');
-            } else if (sanitized.includes(',')) {
-                parts = sanitized.split(',');
-            } else {
-                parts = [sanitized];
-            }
-            if (parts.length < 2) {
-                throw new Error(`Строка ${index + 1} не содержит двух столбцов.`);
+
+        const parsed = rows.map((row, rowIndex) => {
+            if (row.length < 2) {
+                throw new Error(`Строка ${rowIndex + 1} не содержит двух столбцов.`);
             }
             return {
-                input: parts[0],
-                output: parts.slice(1).join('\t')
+                input: row[0],
+                output: row.slice(1).join('\t')
             };
         });
+
         return normalizeBulkRows(parsed);
     }
 
@@ -422,14 +680,9 @@
         const parsed = rows
             .map((row, index) => {
                 const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
-                    cell.textContent
-                        .replace(/\r/g, '')
-                        .replace(/\u00a0/g, ' ')
+                    cell.textContent.replace(/\r\n?/g, '\n')
                 );
                 if (!cells.length) {
-                    return null;
-                }
-                if (cells.every(cell => cell.trim().length === 0)) {
                     return null;
                 }
                 if (cells.length < 2) {
@@ -448,19 +701,20 @@
         if (!Array.isArray(rows)) {
             return [];
         }
-        const filtered = rows
-            .map(item => ({
-                input: typeof item.input === 'string' ? item.input : '',
-                output: typeof item.output === 'string' ? item.output : ''
-            }))
-            .filter(item => item.input !== '' || item.output !== '');
-        if (!filtered.length) {
+        const normalized = rows.map(item => ({
+            input: typeof item.input === 'string' ? item.input : '',
+            output: typeof item.output === 'string' ? item.output : ''
+        }));
+        if (!normalized.length) {
             return [];
         }
-        if (isHeaderRow(filtered[0])) {
-            filtered.shift();
+        const headerIndex = normalized.findIndex(row =>
+            (row.input.trim() !== '' || row.output.trim() !== '')
+        );
+        if (headerIndex !== -1 && isHeaderRow(normalized[headerIndex])) {
+            return normalized.filter((_, index) => index !== headerIndex);
         }
-        return filtered;
+        return normalized;
     }
 
     function isHeaderRow(row) {
@@ -643,8 +897,8 @@
         const zip = new JSZip();
         tests.forEach((test, index) => {
             const baseName = String(index + 1);
-            zip.file(baseName, test.input);
-            zip.file(`${baseName}.a`, test.output);
+            zip.file(baseName, encodeWindows1251(test.input), { binary: true });
+            zip.file(`${baseName}.a`, encodeWindows1251(test.output), { binary: true });
         });
 
         try {
@@ -680,10 +934,10 @@
         archiveNameInput.value = defaultArchiveName;
         bulkTableData = [];
         if (problemStatementInput) {
-            problemStatementInput.value = '';
+            assignTextareaValue(problemStatementInput, '');
         }
         if (solutionCodeInput) {
-            solutionCodeInput.value = '';
+            assignTextareaValue(solutionCodeInput, '');
         }
         problemStatementValue = '';
         solutionCodeValue = '';
@@ -719,14 +973,14 @@
                 return;
             }
             addTest(input, output);
-            singleInput.value = '';
-            singleOutput.value = '';
+            assignTextareaValue(singleInput, '');
+            assignTextareaValue(singleOutput, '');
             setStatus('Тест добавлен.', 'success');
         });
 
         clearSingle.addEventListener('click', () => {
-            singleInput.value = '';
-            singleOutput.value = '';
+            assignTextareaValue(singleInput, '');
+            assignTextareaValue(singleOutput, '');
             setStatus('Поля очищены.', 'info');
         });
 
@@ -865,6 +1119,7 @@
     }
 
     function init() {
+        const textareas = initializeTextareaAutoResize();
         loadState();
         if (!archiveNameInput.value) {
             archiveNameInput.value = defaultArchiveName;
@@ -873,6 +1128,15 @@
         renderBulkTable();
         initTabs();
         attachEventListeners();
+        textareas.forEach(updateTextareaAutoHeight);
+        window.addEventListener('resize', () => {
+            textareas.forEach(updateTextareaAutoHeight);
+        });
+        if (document.fonts && typeof document.fonts.addEventListener === 'function') {
+            document.fonts.addEventListener('loadingdone', () => {
+                textareas.forEach(updateTextareaAutoHeight);
+            });
+        }
     }
 
     init();

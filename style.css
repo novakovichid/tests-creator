@@ -151,7 +151,7 @@ p {
 }
 
 .form-field textarea {
-    min-height: 96px;
+    min-height: 0;
     white-space: pre;
 }
 
