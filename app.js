@@ -5,6 +5,7 @@
     let currentEditIndex = null;
     let problemStatementValue = '';
     let solutionCodeValue = '';
+    let solverCache = { code: '', solver: null };
 
     const archiveNameInput = document.getElementById('archiveName');
     const downloadButton = document.getElementById('downloadArchive');
@@ -26,6 +27,8 @@
 
     const problemStatementInput = document.getElementById('problemStatement');
     const solutionCodeInput = document.getElementById('solutionCode');
+    const generateSingleOutputButton = document.getElementById('generateSingleOutput');
+    const generateBulkOutputsButton = document.getElementById('generateBulkOutputs');
 
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -40,6 +43,131 @@
         statusBox.className = '';
         if (message) {
             statusBox.classList.add(type);
+        }
+    }
+
+    function getSolutionCodeSource() {
+        if (solutionCodeInput) {
+            return solutionCodeInput.value;
+        }
+        return solutionCodeValue;
+    }
+
+    function invalidateSolverCache() {
+        solverCache = { code: '', solver: null };
+    }
+
+    function normalizeSolverOutput(value) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        if (Array.isArray(value)) {
+            return value.join('\n');
+        }
+        if (typeof value === 'object') {
+            try {
+                return JSON.stringify(value);
+            } catch (error) {
+                return String(value);
+            }
+        }
+        return String(value);
+    }
+
+    function formatSolverError(error) {
+        if (error instanceof Error && error.message) {
+            return error.message;
+        }
+        return String(error);
+    }
+
+    async function executeSolverOnInput(solver, inputText) {
+        let result = solver(inputText);
+        if (result && typeof result.then === 'function') {
+            result = await result;
+        }
+        return normalizeSolverOutput(result);
+    }
+
+    function getSolver() {
+        const source = (getSolutionCodeSource() || '').trim();
+        if (!source) {
+            throw new Error('Добавьте решение выше, чтобы использовать автогенерацию.');
+        }
+        if (solverCache.solver && solverCache.code === source) {
+            return solverCache.solver;
+        }
+        try {
+            const factory = new Function(`${source}; if (typeof solve !== 'function') { throw new Error('Определите функцию solve(input).'); } return solve;`);
+            const solver = factory();
+            if (typeof solver !== 'function') {
+                throw new Error('Функция solve(input) не найдена.');
+            }
+            solverCache = { code: source, solver };
+            return solver;
+        } catch (error) {
+            invalidateSolverCache();
+            throw error instanceof Error ? error : new Error(String(error));
+        }
+    }
+
+    async function fillSingleOutputFromSolution() {
+        try {
+            const solver = getSolver();
+            const outputValue = await executeSolverOnInput(solver, singleInput.value);
+            singleOutput.value = outputValue;
+            setStatus('Выходные данные получены из решения.', 'success');
+        } catch (error) {
+            console.error('Ошибка выполнения решения', error);
+            setStatus(`Не удалось выполнить решение: ${formatSolverError(error)}`, 'error');
+        }
+    }
+
+    async function fillBulkOutputsFromSolution() {
+        if (!bulkTableData.length) {
+            setStatus('Сначала вставьте таблицу с данными перед автозаполнением.', 'error');
+            if (tablePasteArea) {
+                tablePasteArea.focus();
+            }
+            return;
+        }
+
+        try {
+            const solver = getSolver();
+            const computedOutputs = [];
+            let processed = 0;
+
+            for (let index = 0; index < bulkTableData.length; index += 1) {
+                const inputValue = bulkTableData[index]?.input ?? '';
+                if (inputValue === '') {
+                    computedOutputs[index] = null;
+                    continue;
+                }
+                const outputValue = await executeSolverOnInput(solver, inputValue);
+                computedOutputs[index] = outputValue;
+                processed += 1;
+            }
+
+            if (!processed) {
+                setStatus('Нет строк с входными данными для автозаполнения.', 'error');
+                return;
+            }
+
+            computedOutputs.forEach((value, index) => {
+                if (!bulkTableData[index]) {
+                    return;
+                }
+                if (value !== null && value !== undefined) {
+                    bulkTableData[index].output = value;
+                }
+            });
+
+            renderBulkTable();
+            saveState();
+            setStatus(`Выходы заполнены для ${processed} ${declineTests(processed)}.`, 'success');
+        } catch (error) {
+            console.error('Ошибка выполнения решения', error);
+            setStatus(`Не удалось выполнить решение: ${formatSolverError(error)}`, 'error');
         }
     }
 
@@ -393,6 +521,130 @@
             cell.textContent = text;
             headerRow.appendChild(cell);
         });
+        });
+        return normalizeBulkRows(parsed);
+    }
+
+    function parseTableFromHTML(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) {
+            return null;
+        }
+        const rows = Array.from(table.querySelectorAll('tr'));
+        if (!rows.length) {
+            return [];
+        }
+        const parsed = rows
+            .map((row, index) => {
+                const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
+                    cell.textContent
+                        .replace(/\r/g, '')
+                        .replace(/\u00a0/g, ' ')
+                );
+                if (!cells.length) {
+                    return null;
+                }
+                if (cells.every(cell => cell.trim().length === 0)) {
+                    return null;
+                }
+                if (cells.length < 2) {
+                    throw new Error(`Строка ${index + 1} таблицы содержит меньше двух столбцов.`);
+                }
+                return {
+                    input: cells[0],
+                    output: cells.slice(1).join('\t')
+                };
+            })
+            .filter(Boolean);
+        return normalizeBulkRows(parsed);
+    }
+
+    function normalizeBulkRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        const filtered = rows
+            .map(item => ({
+                input: typeof item.input === 'string' ? item.input : '',
+                output: typeof item.output === 'string' ? item.output : ''
+            }))
+            .filter(item => item.input !== '' || item.output !== '');
+        if (!filtered.length) {
+            return [];
+        }
+        if (isHeaderRow(filtered[0])) {
+            filtered.shift();
+        }
+        return filtered;
+    }
+
+    function isHeaderRow(row) {
+        if (!row) {
+            return false;
+        }
+        const inputValue = row.input.trim().toLowerCase();
+        const outputValue = row.output.trim().toLowerCase();
+        const inputKeywords = ['вход', 'input', 'пример', 'данные'];
+        const outputKeywords = ['выход', 'output', 'ответ', 'result'];
+        const hasInputKeyword = inputKeywords.some(keyword => inputValue.includes(keyword));
+        const hasOutputKeyword = outputKeywords.some(keyword => outputValue.includes(keyword));
+        return hasInputKeyword && hasOutputKeyword;
+    }
+
+    function getNonEmptyRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        return rows.filter(row => (row.input ?? '') !== '' || (row.output ?? '') !== '');
+    }
+
+    function updateTableHint() {
+        if (!tableHint) {
+            return;
+        }
+        if (bulkTableData.length) {
+            tableHint.textContent = `Строк в таблице: ${bulkTableData.length}. Отредактируйте значения при необходимости перед добавлением.`;
+        } else {
+            tableHint.textContent = 'Нажмите сюда и вставьте (Ctrl+V) таблицу из Excel или Google Sheets. Будут использованы первые два столбца.';
+        }
+    }
+
+    function renderBulkTable() {
+        if (!tablePreview) {
+            return;
+        }
+        tablePreview.innerHTML = '';
+        if (!bulkTableData.length) {
+            if (tablePasteArea) {
+                tablePasteArea.classList.remove('has-table');
+            }
+            const placeholder = document.createElement('p');
+            placeholder.className = 'table-placeholder';
+            placeholder.textContent = 'Здесь появится таблица после вставки данных.';
+            tablePreview.appendChild(placeholder);
+            if (clearBulk) {
+                clearBulk.disabled = true;
+            }
+            updateTableHint();
+            return;
+        }
+
+        if (tablePasteArea) {
+            tablePasteArea.classList.add('has-table');
+        }
+
+        const table = document.createElement('table');
+        table.className = 'pasted-table';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Входные данные', 'Выходные данные', ''].forEach(text => {
+            const cell = document.createElement('th');
+            cell.textContent = text;
+            headerRow.appendChild(cell);
+        });
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
@@ -550,6 +802,7 @@
         }
         problemStatementValue = '';
         solutionCodeValue = '';
+        invalidateSolverCache();
         renderBulkTable();
         saveState();
         renderTests();
@@ -591,6 +844,20 @@
             singleOutput.value = '';
             setStatus('Поля очищены.', 'info');
         });
+
+        if (generateSingleOutputButton) {
+            generateSingleOutputButton.addEventListener('click', async () => {
+                if (generateSingleOutputButton.disabled) {
+                    return;
+                }
+                generateSingleOutputButton.disabled = true;
+                try {
+                    await fillSingleOutputFromSolution();
+                } finally {
+                    generateSingleOutputButton.disabled = false;
+                }
+            });
+        }
 
         if (tablePasteArea) {
             tablePasteArea.addEventListener('paste', handleBulkPaste);
@@ -641,6 +908,20 @@
             }
         });
 
+        if (generateBulkOutputsButton) {
+            generateBulkOutputsButton.addEventListener('click', async () => {
+                if (generateBulkOutputsButton.disabled) {
+                    return;
+                }
+                generateBulkOutputsButton.disabled = true;
+                try {
+                    await fillBulkOutputsFromSolution();
+                } finally {
+                    generateBulkOutputsButton.disabled = false;
+                }
+            });
+        }
+
         downloadButton.addEventListener('click', downloadArchive);
         resetButton.addEventListener('click', resetArchive);
 
@@ -656,6 +937,7 @@
 
         if (solutionCodeInput) {
             solutionCodeInput.addEventListener('input', () => {
+                invalidateSolverCache();
                 saveState();
             });
         }
