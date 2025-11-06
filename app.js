@@ -1,7 +1,10 @@
 (() => {
     const storageKey = 'testsCreatorState';
     let tests = [];
+    let bulkTableData = [];
     let currentEditIndex = null;
+    let problemStatementValue = '';
+    let solutionCodeValue = '';
 
     const archiveNameInput = document.getElementById('archiveName');
     const downloadButton = document.getElementById('downloadArchive');
@@ -16,8 +19,13 @@
     const clearSingle = document.getElementById('clearSingle');
 
     const bulkForm = document.getElementById('bulkForm');
-    const bulkInput = document.getElementById('bulkInput');
+    const tablePasteArea = document.getElementById('tablePasteArea');
+    const tablePreview = document.getElementById('tablePreview');
+    const tableHint = document.getElementById('tableHint');
     const clearBulk = document.getElementById('clearBulk');
+
+    const problemStatementInput = document.getElementById('problemStatement');
+    const solutionCodeInput = document.getElementById('solutionCode');
 
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -40,6 +48,24 @@
             tests,
             archiveName: archiveNameInput.value
         };
+
+        if (tablePasteArea) {
+            state.bulkTableData = bulkTableData.map(item => ({
+                input: typeof item.input === 'string' ? item.input : '',
+                output: typeof item.output === 'string' ? item.output : ''
+            }));
+        }
+
+        if (problemStatementInput) {
+            problemStatementValue = problemStatementInput.value;
+        }
+        state.problemStatement = problemStatementValue;
+
+        if (solutionCodeInput) {
+            solutionCodeValue = solutionCodeInput.value;
+        }
+        state.solutionCode = solutionCodeValue;
+
         try {
             localStorage.setItem(storageKey, JSON.stringify(state));
         } catch (error) {
@@ -60,8 +86,32 @@
                     output: typeof item.output === 'string' ? item.output : ''
                 }));
             }
+            if (Array.isArray(state.bulkTableData)) {
+                bulkTableData = state.bulkTableData
+                    .map(item => ({
+                        input: typeof item.input === 'string' ? item.input : '',
+                        output: typeof item.output === 'string' ? item.output : ''
+                    }))
+                    .filter(item => item.input !== '' || item.output !== '');
+            }
             if (typeof state.archiveName === 'string') {
                 archiveNameInput.value = state.archiveName;
+            }
+            if (typeof state.problemStatement === 'string') {
+                problemStatementValue = state.problemStatement;
+                if (problemStatementInput) {
+                    problemStatementInput.value = problemStatementValue;
+                }
+            } else {
+                problemStatementValue = '';
+            }
+            if (typeof state.solutionCode === 'string') {
+                solutionCodeValue = state.solutionCode;
+                if (solutionCodeInput) {
+                    solutionCodeInput.value = solutionCodeValue;
+                }
+            } else {
+                solutionCodeValue = '';
             }
         } catch (error) {
             console.error('Не удалось загрузить сохранённое состояние', error);
@@ -193,27 +243,252 @@
     }
 
     function parseBulkInput(rawText) {
-        const rows = rawText.split(/\n/).map(line => line.replace(/\r$/, '')).filter(line => line.length > 0);
-        const parsed = [];
-        rows.forEach((row, index) => {
+        const rows = rawText
+            .split(/\n/)
+            .map(line => line.replace(/\r$/, ''))
+            .filter(line => line.length > 0);
+        if (!rows.length) {
+            return [];
+        }
+        const parsed = rows.map((row, index) => {
+            const sanitized = row.replace(/\r/g, '');
             let parts;
-            if (row.includes('\t')) {
-                parts = row.split('\t');
-            } else if (row.includes(';')) {
-                parts = row.split(';');
-            } else if (row.includes(',')) {
-                parts = row.split(',');
+            if (sanitized.includes('\t')) {
+                parts = sanitized.split('\t');
+            } else if (sanitized.includes(';')) {
+                parts = sanitized.split(';');
+            } else if (sanitized.includes(',')) {
+                parts = sanitized.split(',');
             } else {
-                parts = [row];
+                parts = [sanitized];
             }
             if (parts.length < 2) {
                 throw new Error(`Строка ${index + 1} не содержит двух столбцов.`);
             }
-            const input = parts[0];
-            const output = parts.slice(1).join('\t');
-            parsed.push({ input, output });
+            return {
+                input: parts[0],
+                output: parts.slice(1).join('\t')
+            };
         });
-        return parsed;
+        return normalizeBulkRows(parsed);
+    }
+
+    function parseTableFromHTML(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) {
+            return null;
+        }
+        const rows = Array.from(table.querySelectorAll('tr'));
+        if (!rows.length) {
+            return [];
+        }
+        const parsed = rows
+            .map((row, index) => {
+                const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
+                    cell.textContent
+                        .replace(/\r/g, '')
+                        .replace(/\u00a0/g, ' ')
+                );
+                if (!cells.length) {
+                    return null;
+                }
+                if (cells.every(cell => cell.trim().length === 0)) {
+                    return null;
+                }
+                if (cells.length < 2) {
+                    throw new Error(`Строка ${index + 1} таблицы содержит меньше двух столбцов.`);
+                }
+                return {
+                    input: cells[0],
+                    output: cells.slice(1).join('\t')
+                };
+            })
+            .filter(Boolean);
+        return normalizeBulkRows(parsed);
+    }
+
+    function normalizeBulkRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        const filtered = rows
+            .map(item => ({
+                input: typeof item.input === 'string' ? item.input : '',
+                output: typeof item.output === 'string' ? item.output : ''
+            }))
+            .filter(item => item.input !== '' || item.output !== '');
+        if (!filtered.length) {
+            return [];
+        }
+        if (isHeaderRow(filtered[0])) {
+            filtered.shift();
+        }
+        return filtered;
+    }
+
+    function isHeaderRow(row) {
+        if (!row) {
+            return false;
+        }
+        const inputValue = row.input.trim().toLowerCase();
+        const outputValue = row.output.trim().toLowerCase();
+        const inputKeywords = ['вход', 'input', 'пример', 'данные'];
+        const outputKeywords = ['выход', 'output', 'ответ', 'result'];
+        const hasInputKeyword = inputKeywords.some(keyword => inputValue.includes(keyword));
+        const hasOutputKeyword = outputKeywords.some(keyword => outputValue.includes(keyword));
+        return hasInputKeyword && hasOutputKeyword;
+    }
+
+    function getNonEmptyRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        return rows.filter(row => (row.input ?? '') !== '' || (row.output ?? '') !== '');
+    }
+
+    function updateTableHint() {
+        if (!tableHint) {
+            return;
+        }
+        if (bulkTableData.length) {
+            tableHint.textContent = `Строк в таблице: ${bulkTableData.length}. Отредактируйте значения при необходимости перед добавлением.`;
+        } else {
+            tableHint.textContent = 'Нажмите сюда и вставьте (Ctrl+V) таблицу из Excel или Google Sheets. Будут использованы первые два столбца.';
+        }
+    }
+
+    function renderBulkTable() {
+        if (!tablePreview) {
+            return;
+        }
+        tablePreview.innerHTML = '';
+        if (!bulkTableData.length) {
+            if (tablePasteArea) {
+                tablePasteArea.classList.remove('has-table');
+            }
+            const placeholder = document.createElement('p');
+            placeholder.className = 'table-placeholder';
+            placeholder.textContent = 'Здесь появится таблица после вставки данных.';
+            tablePreview.appendChild(placeholder);
+            if (clearBulk) {
+                clearBulk.disabled = true;
+            }
+            updateTableHint();
+            return;
+        }
+
+        if (tablePasteArea) {
+            tablePasteArea.classList.add('has-table');
+        }
+
+        const table = document.createElement('table');
+        table.className = 'pasted-table';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Входные данные', 'Выходные данные', ''].forEach(text => {
+            const cell = document.createElement('th');
+            cell.textContent = text;
+            headerRow.appendChild(cell);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        bulkTableData.forEach((row, rowIndex) => {
+            const tr = document.createElement('tr');
+            ['input', 'output'].forEach(field => {
+                const td = document.createElement('td');
+                td.contentEditable = 'true';
+                td.dataset.rowIndex = String(rowIndex);
+                td.dataset.field = field;
+                td.spellcheck = false;
+                td.textContent = row[field];
+                td.addEventListener('input', handleBulkCellInput);
+                tr.appendChild(td);
+            });
+
+            const removeCell = document.createElement('td');
+            removeCell.className = 'remove-cell';
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'icon-button';
+            removeButton.setAttribute('aria-label', `Удалить строку ${rowIndex + 1}`);
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', () => removeBulkRow(rowIndex));
+            removeCell.appendChild(removeButton);
+            tr.appendChild(removeCell);
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tablePreview.appendChild(table);
+
+        if (clearBulk) {
+            clearBulk.disabled = false;
+        }
+
+        updateTableHint();
+    }
+
+    function handleBulkCellInput(event) {
+        const cell = event.currentTarget;
+        const rowIndex = Number(cell.dataset.rowIndex);
+        const field = cell.dataset.field;
+        if (!Number.isInteger(rowIndex) || !['input', 'output'].includes(field)) {
+            return;
+        }
+        if (!bulkTableData[rowIndex]) {
+            return;
+        }
+        bulkTableData[rowIndex][field] = cell.textContent;
+        saveState();
+    }
+
+    function removeBulkRow(index) {
+        if (index < 0 || index >= bulkTableData.length) {
+            return;
+        }
+        bulkTableData.splice(index, 1);
+        renderBulkTable();
+        saveState();
+        setStatus('Строка удалена из таблицы.', 'info');
+    }
+
+    function handleBulkPaste(event) {
+        if (!event.clipboardData) {
+            return;
+        }
+        event.preventDefault();
+
+        let parsed = null;
+        const html = event.clipboardData.getData('text/html');
+        const text = event.clipboardData.getData('text/plain');
+
+        try {
+            if (html) {
+                parsed = parseTableFromHTML(html);
+            }
+            if ((!parsed || !parsed.length) && text) {
+                parsed = parseBulkInput(text);
+            }
+        } catch (error) {
+            console.error('Ошибка обработки табличных данных', error);
+            setStatus(error.message || 'Не удалось распознать таблицу.', 'error');
+            return;
+        }
+
+        if (!parsed || !parsed.length) {
+            setStatus('Не удалось распознать таблицу. Убедитесь, что копируете минимум два столбца.', 'error');
+            return;
+        }
+
+        bulkTableData = parsed;
+        renderBulkTable();
+        saveState();
+        setStatus(`Таблица загружена: ${bulkTableData.length} ${declineTests(bulkTableData.length)}.`, 'success');
     }
 
     function generateFileName(base) {
@@ -255,7 +530,9 @@
     }
 
     function resetArchive() {
-        if (!tests.length && !archiveNameInput.value) {
+        const hasProblemStatement = problemStatementInput && problemStatementInput.value;
+        const hasSolutionCode = solutionCodeInput && solutionCodeInput.value;
+        if (!tests.length && !archiveNameInput.value && !bulkTableData.length && !hasProblemStatement && !hasSolutionCode) {
             return;
         }
         const confirmed = confirm('Очистить текущий архив и начать заново? Все несохранённые данные будут удалены.');
@@ -264,6 +541,16 @@
         }
         tests = [];
         archiveNameInput.value = '';
+        bulkTableData = [];
+        if (problemStatementInput) {
+            problemStatementInput.value = '';
+        }
+        if (solutionCodeInput) {
+            solutionCodeInput.value = '';
+        }
+        problemStatementValue = '';
+        solutionCodeValue = '';
+        renderBulkTable();
         saveState();
         renderTests();
         setStatus('Начните добавлять тесты заново.', 'info');
@@ -305,28 +592,53 @@
             setStatus('Поля очищены.', 'info');
         });
 
+        if (tablePasteArea) {
+            tablePasteArea.addEventListener('paste', handleBulkPaste);
+            tablePasteArea.addEventListener('focus', () => {
+                tablePasteArea.classList.add('focused');
+            });
+            tablePasteArea.addEventListener('blur', () => {
+                tablePasteArea.classList.remove('focused');
+            });
+            tablePasteArea.addEventListener('click', () => {
+                tablePasteArea.focus();
+            });
+        }
+
         bulkForm.addEventListener('submit', event => {
             event.preventDefault();
-            const rawText = bulkInput.value;
-            if (!rawText.trim()) {
-                setStatus('Вставьте таблицу с данными перед добавлением.', 'error');
+            const prepared = getNonEmptyRows(bulkTableData);
+            if (!prepared.length) {
+                setStatus('Сначала вставьте таблицу с данными перед добавлением.', 'error');
+                if (tablePasteArea) {
+                    tablePasteArea.focus();
+                }
                 return;
             }
-            try {
-                const parsed = parseBulkInput(rawText);
-                parsed.forEach(item => tests.push(item));
-                saveState();
-                renderTests();
-                setStatus(`Добавлено ${parsed.length} ${declineTests(parsed.length)}.`, 'success');
-                bulkInput.value = '';
-            } catch (error) {
-                setStatus(error.message, 'error');
-            }
+            prepared.forEach(item => {
+                tests.push({
+                    input: item.input,
+                    output: item.output
+                });
+            });
+            bulkTableData = [];
+            renderBulkTable();
+            saveState();
+            renderTests();
+            setStatus(`Добавлено ${prepared.length} ${declineTests(prepared.length)}.`, 'success');
         });
 
         clearBulk.addEventListener('click', () => {
-            bulkInput.value = '';
-            setStatus('Поле очищено.', 'info');
+            if (!bulkTableData.length) {
+                return;
+            }
+            bulkTableData = [];
+            renderBulkTable();
+            saveState();
+            setStatus('Таблица очищена.', 'info');
+            if (tablePasteArea) {
+                tablePasteArea.focus();
+            }
         });
 
         downloadButton.addEventListener('click', downloadArchive);
@@ -335,6 +647,18 @@
         archiveNameInput.addEventListener('input', () => {
             saveState();
         });
+
+        if (problemStatementInput) {
+            problemStatementInput.addEventListener('input', () => {
+                saveState();
+            });
+        }
+
+        if (solutionCodeInput) {
+            solutionCodeInput.addEventListener('input', () => {
+                saveState();
+            });
+        }
 
         editForm.addEventListener('submit', event => {
             event.preventDefault();
@@ -376,6 +700,7 @@
     function init() {
         loadState();
         renderTests();
+        renderBulkTable();
         initTabs();
         attachEventListeners();
     }

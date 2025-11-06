@@ -3,26 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Конструктор архива тестов</title>
+    <title>Экспериментальный режим — Конструктор архива тестов</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" integrity="sha256-9bSVKdfS3C0cFLbFhF38sZ4N2VNivXzXcX4Jt9I7P0o=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" integrity="sha256-9bSVKdfS3C0cFLbFhF38sZ4N2VNivXzcX4Jt9I7P0o=" crossorigin="anonymous"></script>
     <script defer src="app.js"></script>
 </head>
 <body>
     <header class="top-bar">
         <div class="container">
-            <h1>Конструктор архива тестов</h1>
-            <p>Подготовьте набор входных и выходных данных для задач программирования и скачайте архив в формате ZIP.</p>
+            <h1>Экспериментальный режим</h1>
+            <p>Добавьте условие задачи и решение, чтобы на их основе подготовить тесты. Функция генерации тестов находится в разработке.</p>
             <nav class="top-nav" aria-label="Навигация по режимам">
-                <a class="nav-link active" href="index.html" aria-current="page">Основной режим</a>
-                <a class="nav-link" href="experimental.html">Экспериментальный режим</a>
+                <a class="nav-link" href="index.html">Основной режим</a>
+                <a class="nav-link active" href="experimental.html" aria-current="page">Экспериментальный режим</a>
             </nav>
         </div>
     </header>
     <main class="container main-content">
+        <section class="panel">
+            <h2>Исходные данные задачи</h2>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="problemStatement">Условие задачи</label>
+                    <textarea id="problemStatement" rows="10" spellcheck="false" placeholder="Вставьте или напишите условие задачи"></textarea>
+                    <p class="hint">Эта информация сохраняется локально и поможет держать формулировку задачи под рукой.</p>
+                </div>
+                <div class="form-field">
+                    <label for="solutionCode">Решение для анализа</label>
+                    <textarea id="solutionCode" rows="10" spellcheck="false" placeholder="Вставьте эталонное решение, которое будет использоваться для генерации тестов"></textarea>
+                    <p class="hint">Планируется автоматический запуск решения для автогенерации тестов — пока вы можете использовать его как памятку.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="panel">
             <h2>Параметры архива</h2>
             <div class="form-field">
