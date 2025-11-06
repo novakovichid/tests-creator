@@ -521,6 +521,130 @@
             cell.textContent = text;
             headerRow.appendChild(cell);
         });
+        });
+        return normalizeBulkRows(parsed);
+    }
+
+    function parseTableFromHTML(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (!table) {
+            return null;
+        }
+        const rows = Array.from(table.querySelectorAll('tr'));
+        if (!rows.length) {
+            return [];
+        }
+        const parsed = rows
+            .map((row, index) => {
+                const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
+                    cell.textContent
+                        .replace(/\r/g, '')
+                        .replace(/\u00a0/g, ' ')
+                );
+                if (!cells.length) {
+                    return null;
+                }
+                if (cells.every(cell => cell.trim().length === 0)) {
+                    return null;
+                }
+                if (cells.length < 2) {
+                    throw new Error(`Строка ${index + 1} таблицы содержит меньше двух столбцов.`);
+                }
+                return {
+                    input: cells[0],
+                    output: cells.slice(1).join('\t')
+                };
+            })
+            .filter(Boolean);
+        return normalizeBulkRows(parsed);
+    }
+
+    function normalizeBulkRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        const filtered = rows
+            .map(item => ({
+                input: typeof item.input === 'string' ? item.input : '',
+                output: typeof item.output === 'string' ? item.output : ''
+            }))
+            .filter(item => item.input !== '' || item.output !== '');
+        if (!filtered.length) {
+            return [];
+        }
+        if (isHeaderRow(filtered[0])) {
+            filtered.shift();
+        }
+        return filtered;
+    }
+
+    function isHeaderRow(row) {
+        if (!row) {
+            return false;
+        }
+        const inputValue = row.input.trim().toLowerCase();
+        const outputValue = row.output.trim().toLowerCase();
+        const inputKeywords = ['вход', 'input', 'пример', 'данные'];
+        const outputKeywords = ['выход', 'output', 'ответ', 'result'];
+        const hasInputKeyword = inputKeywords.some(keyword => inputValue.includes(keyword));
+        const hasOutputKeyword = outputKeywords.some(keyword => outputValue.includes(keyword));
+        return hasInputKeyword && hasOutputKeyword;
+    }
+
+    function getNonEmptyRows(rows) {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+        return rows.filter(row => (row.input ?? '') !== '' || (row.output ?? '') !== '');
+    }
+
+    function updateTableHint() {
+        if (!tableHint) {
+            return;
+        }
+        if (bulkTableData.length) {
+            tableHint.textContent = `Строк в таблице: ${bulkTableData.length}. Отредактируйте значения при необходимости перед добавлением.`;
+        } else {
+            tableHint.textContent = 'Нажмите сюда и вставьте (Ctrl+V) таблицу из Excel или Google Sheets. Будут использованы первые два столбца.';
+        }
+    }
+
+    function renderBulkTable() {
+        if (!tablePreview) {
+            return;
+        }
+        tablePreview.innerHTML = '';
+        if (!bulkTableData.length) {
+            if (tablePasteArea) {
+                tablePasteArea.classList.remove('has-table');
+            }
+            const placeholder = document.createElement('p');
+            placeholder.className = 'table-placeholder';
+            placeholder.textContent = 'Здесь появится таблица после вставки данных.';
+            tablePreview.appendChild(placeholder);
+            if (clearBulk) {
+                clearBulk.disabled = true;
+            }
+            updateTableHint();
+            return;
+        }
+
+        if (tablePasteArea) {
+            tablePasteArea.classList.add('has-table');
+        }
+
+        const table = document.createElement('table');
+        table.className = 'pasted-table';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Входные данные', 'Выходные данные', ''].forEach(text => {
+            const cell = document.createElement('th');
+            cell.textContent = text;
+            headerRow.appendChild(cell);
+        });
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
