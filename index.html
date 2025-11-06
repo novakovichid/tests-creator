@@ -35,10 +35,10 @@
         <section class="panel tests-panel">
             <h2>Добавление тестов</h2>
             <div class="tabs">
-                <button class="tab active" data-tab="single">Один тест</button>
-                <button class="tab" data-tab="bulk">Пакетная вставка</button>
+                <button class="tab" data-tab="single">Один тест</button>
+                <button class="tab active" data-tab="bulk">Пакетная вставка</button>
             </div>
-            <div class="tab-content" data-tab-content="single">
+            <div class="tab-content hidden" data-tab-content="single">
                 <form id="singleForm" class="form-grid">
                     <div class="form-field">
                         <label for="singleInput">Входные данные</label>
@@ -54,7 +54,7 @@
                     </div>
                 </form>
             </div>
-            <div class="tab-content hidden" data-tab-content="bulk">
+            <div class="tab-content" data-tab-content="bulk">
                 <form id="bulkForm" class="form-grid">
                     <div class="form-field">
                         <label for="tablePasteArea">Вставьте таблицу с парами столбцов (вход, выход)</label>

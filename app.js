@@ -8,6 +8,7 @@
     let solverCache = { code: '', solver: null };
 
     const archiveNameInput = document.getElementById('archiveName');
+    const defaultArchiveName = 'tests-archive';
     const downloadButton = document.getElementById('downloadArchive');
     const resetButton = document.getElementById('resetArchive');
     const testsList = document.getElementById('testsList');
@@ -171,6 +172,10 @@
         }
     }
 
+    function getArchiveName() {
+        return (archiveNameInput.value || '').trim() || defaultArchiveName;
+    }
+
     function saveState() {
         const state = {
             tests,
@@ -222,8 +227,10 @@
                     }))
                     .filter(item => item.input !== '' || item.output !== '');
             }
-            if (typeof state.archiveName === 'string') {
+            if (typeof state.archiveName === 'string' && state.archiveName.trim()) {
                 archiveNameInput.value = state.archiveName;
+            } else {
+                archiveNameInput.value = defaultArchiveName;
             }
             if (typeof state.problemStatement === 'string') {
                 problemStatementValue = state.problemStatement;
@@ -645,7 +652,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = generateFileName(archiveNameInput.value || 'tests');
+            link.download = generateFileName(getArchiveName());
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -660,7 +667,9 @@
     function resetArchive() {
         const hasProblemStatement = problemStatementInput && problemStatementInput.value;
         const hasSolutionCode = solutionCodeInput && solutionCodeInput.value;
-        if (!tests.length && !archiveNameInput.value && !bulkTableData.length && !hasProblemStatement && !hasSolutionCode) {
+        const archiveName = (archiveNameInput.value || '').trim();
+        const hasCustomArchiveName = archiveName && archiveName !== defaultArchiveName;
+        if (!tests.length && !hasCustomArchiveName && !bulkTableData.length && !hasProblemStatement && !hasSolutionCode) {
             return;
         }
         const confirmed = confirm('Очистить текущий архив и начать заново? Все несохранённые данные будут удалены.');
@@ -668,7 +677,7 @@
             return;
         }
         tests = [];
-        archiveNameInput.value = '';
+        archiveNameInput.value = defaultArchiveName;
         bulkTableData = [];
         if (problemStatementInput) {
             problemStatementInput.value = '';
@@ -857,6 +866,9 @@
 
     function init() {
         loadState();
+        if (!archiveNameInput.value) {
+            archiveNameInput.value = defaultArchiveName;
+        }
         renderTests();
         renderBulkTable();
         initTabs();
