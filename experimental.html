@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Конструктор архива тестов</title>
+    <title>Экспериментальный режим — Конструктор архива тестов</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,15 +14,31 @@
 <body>
     <header class="top-bar">
         <div class="container">
-            <h1>Конструктор архива тестов</h1>
-            <p>Подготовьте набор входных и выходных данных для задач программирования и скачайте архив в формате ZIP.</p>
+            <h1>Экспериментальный режим</h1>
+            <p>Добавьте условие задачи и работающее решение на JavaScript, чтобы автоматизировать заполнение выходных данных и ускорить подготовку тестов.</p>
             <nav class="top-nav" aria-label="Навигация по режимам">
-                <a class="nav-link active" href="index.html" aria-current="page">Основной режим</a>
-                <a class="nav-link" href="experimental.html">Экспериментальный режим</a>
+                <a class="nav-link" href="index.html">Основной режим</a>
+                <a class="nav-link active" href="experimental.html" aria-current="page">Экспериментальный режим</a>
             </nav>
         </div>
     </header>
     <main class="container main-content">
+        <section class="panel">
+            <h2>Исходные данные задачи</h2>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="problemStatement">Условие задачи</label>
+                    <textarea id="problemStatement" rows="10" spellcheck="false" placeholder="Вставьте или напишите условие задачи"></textarea>
+                    <p class="hint">Эта информация сохраняется локально и поможет держать формулировку задачи под рукой.</p>
+                </div>
+                <div class="form-field">
+                    <label for="solutionCode">Решение для анализа</label>
+                    <textarea id="solutionCode" rows="10" spellcheck="false" placeholder="Определите функцию solve(input), возвращающую строку с ответом"></textarea>
+                    <p class="hint">Код выполняется в браузере. Объявите функцию <code>solve(input)</code>, которая получает текст входных данных одной строкой и возвращает строку результата. Можно использовать вспомогательные функции и промисы.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="panel">
             <h2>Параметры архива</h2>
             <div class="form-field">
@@ -53,6 +69,7 @@
                         <textarea id="singleOutput" rows="6" spellcheck="false"></textarea>
                     </div>
                     <div class="form-actions">
+                        <button type="button" id="generateSingleOutput" class="secondary">Сгенерировать выход из решения</button>
                         <button type="submit" class="primary">Добавить тест</button>
                         <button type="button" id="clearSingle" class="secondary">Очистить поля</button>
                     </div>
@@ -69,6 +86,7 @@
                         <p class="hint">Можно редактировать значения прямо в таблице перед добавлением.</p>
                     </div>
                     <div class="form-actions">
+                        <button type="button" id="generateBulkOutputs" class="secondary">Заполнить выходы по решению</button>
                         <button type="submit" class="primary">Добавить все тесты</button>
                         <button type="button" id="clearBulk" class="secondary">Очистить таблицу</button>
                     </div>
