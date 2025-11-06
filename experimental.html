@@ -26,14 +26,14 @@
             <div class="form-grid">
                 <div class="form-field">
                     <label for="problemStatement">Условие задачи</label>
-                    <textarea id="problemStatement" rows="10" spellcheck="false" placeholder="Вставьте или напишите условие задачи"></textarea>
+                    <textarea id="problemStatement" rows="1" spellcheck="false" placeholder="Вставьте или напишите условие задачи"></textarea>
                     <p class="hint">Эта информация сохраняется локально и поможет держать формулировку задачи под рукой.</p>
                 </div>
                 <div class="form-field">
                     <label for="solutionCode">Решение для анализа</label>
-                    <textarea id="solutionCode" rows="10" spellcheck="false" placeholder="Определите функцию solve(input), возвращающую строку с ответом"></textarea>
+                    <textarea id="solutionCode" rows="1" spellcheck="false" placeholder="Определите функцию solve(input), возвращающую строку с ответом"></textarea>
                     <p class="hint">Код выполняется в браузере. Объявите функцию <code>solve(input)</code>, которая получает текст входных данных одной строкой и возвращает строку результата. Можно использовать вспомогательные функции и промисы.</p>
-                    <textarea id="solutionCode" rows="10" spellcheck="false" placeholder="Вставьте эталонное решение, которое будет использоваться для генерации тестов"></textarea>
+                    <textarea id="solutionCode" rows="1" spellcheck="false" placeholder="Вставьте эталонное решение, которое будет использоваться для генерации тестов"></textarea>
                     <p class="hint">Планируется автоматический запуск решения для автогенерации тестов — пока вы можете использовать его как памятку.</p>
                 </div>
             </div>
@@ -62,11 +62,11 @@
                 <form id="singleForm" class="form-grid">
                     <div class="form-field">
                         <label for="singleInput">Входные данные</label>
-                        <textarea id="singleInput" rows="6" spellcheck="false"></textarea>
+                        <textarea id="singleInput" rows="1" spellcheck="false"></textarea>
                     </div>
                     <div class="form-field">
                         <label for="singleOutput">Выходные данные</label>
-                        <textarea id="singleOutput" rows="6" spellcheck="false"></textarea>
+                        <textarea id="singleOutput" rows="1" spellcheck="false"></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="button" id="generateSingleOutput" class="secondary">Сгенерировать выход из решения</button>
@@ -117,11 +117,11 @@
                 <div class="modal-body">
                     <div class="form-field">
                         <label for="editInput">Входные данные</label>
-                        <textarea id="editInput" rows="8" spellcheck="false"></textarea>
+                        <textarea id="editInput" rows="1" spellcheck="false"></textarea>
                     </div>
                     <div class="form-field">
                         <label for="editOutput">Выходные данные</label>
-                        <textarea id="editOutput" rows="8" spellcheck="false"></textarea>
+                        <textarea id="editOutput" rows="1" spellcheck="false"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
