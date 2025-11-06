@@ -37,19 +37,19 @@ p {
 .top-bar {
     background: var(--blue-primary);
     color: #fff;
-    padding: 2rem 0 1.5rem;
+    padding: 1.6rem 0 1.2rem;
     box-shadow: 0 2px 12px rgba(0, 44, 104, 0.2);
 }
 
 .top-bar h1 {
-    font-size: 1.85rem;
-    margin-bottom: 0.35rem;
+    font-size: 1.75rem;
+    margin-bottom: 0.3rem;
 }
 
 .top-bar p {
-    font-size: 0.95rem;
+    font-size: 0.93rem;
     opacity: 0.95;
-    max-width: 720px;
+    max-width: 620px;
 }
 
 .top-nav {
@@ -83,36 +83,38 @@ p {
 }
 
 .main-content {
-    padding: 1.75rem 0 2.5rem;
+    padding: 1.5rem 0 2rem;
     display: grid;
-    gap: 1.25rem;
+    gap: 0.85rem;
+    align-items: start;
 }
 
 .panel {
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 1.25rem;
+    padding: 1rem 1.1rem;
     box-shadow: 0 4px 16px rgba(28, 88, 166, 0.07);
+    height: 100%;
 }
 
 .panel h2 {
-    margin-bottom: 0.75rem;
-    font-size: 1.3rem;
+    margin-bottom: 0.6rem;
+    font-size: 1.2rem;
 }
 
 .panel-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 0.85rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.6rem;
 }
 
 .form-field {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    margin-bottom: 0.85rem;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .form-field label {
@@ -127,10 +129,11 @@ p {
     border: 1px solid var(--border-color);
     background: #fbfdff;
     resize: vertical;
+    width: 100%;
 }
 
 .form-field textarea {
-    min-height: 108px;
+    min-height: 96px;
     white-space: pre;
 }
 
@@ -142,7 +145,7 @@ p {
 }
 
 .hint {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: #4e5d8b;
     margin: 0;
 }
@@ -195,7 +198,7 @@ button:disabled {
     padding: 0.3rem;
     border-radius: 999px;
     gap: 0.3rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .tab {
@@ -306,6 +309,14 @@ button:disabled {
 .form-grid {
     display: grid;
     gap: 0.9rem;
+}
+
+.form-grid > * {
+    min-width: 0;
+}
+
+.form-grid .form-actions {
+    margin-top: 0;
 }
 
 .tests-list {
@@ -484,7 +495,7 @@ button:disabled {
     margin-bottom: 1rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 880px) {
     .form-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -495,6 +506,56 @@ button:disabled {
 
     .test-content {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .main-content {
+        grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1fr) minmax(300px, 1.1fr);
+        grid-template-rows: auto;
+        grid-template-areas: "archive tests list";
+    }
+
+    .archive-panel {
+        grid-area: archive;
+    }
+
+    .tests-panel {
+        grid-area: tests;
+    }
+
+    .list-panel {
+        grid-area: list;
+    }
+
+    .tests-panel .tabs {
+        width: 100%;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        grid-column: auto;
+    }
+}
+
+@media (min-width: 1280px) {
+    .main-content {
+        grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1fr) minmax(360px, 1.2fr);
+    }
+
+    .tests-panel .tabs {
+        width: fit-content;
+    }
+
+    .form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .form-actions {
+        grid-column: span 2;
     }
 }
 
