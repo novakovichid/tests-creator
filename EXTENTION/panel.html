@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конструктор тестов — расширение</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script defer src="src/app.js"></script>
+</head>
+<body>
+    <header class="top-bar">
+        <div class="container">
+            <h1>Конструктор архива тестов</h1>
+            <p>Подготовьте набор входных и выходных данных для задач программирования.</p>
+        </div>
+    </header>
+    <main class="container main-content">
+        <section class="panel archive-panel">
+            <h2>Параметры подготовки</h2>
+            <div class="form-field">
+                <label for="archiveName">Название набора</label>
+                <input type="text" id="archiveName" placeholder="Например, contest-101" autocomplete="off">
+                <p class="hint">К названию можно будет добавить текущую дату и время в финальной реализации.</p>
+            </div>
+            <div class="panel-actions">
+                <button id="downloadArchive" class="primary">Подготовить результат</button>
+                <button id="resetArchive" class="secondary">Начать заново</button>
+            </div>
+        </section>
+
+        <section class="panel tests-panel">
+            <h2>Добавление тестов</h2>
+            <div class="tabs">
+                <button class="tab" data-tab="single">Один тест</button>
+                <button class="tab active" data-tab="bulk">Пакетная вставка</button>
+            </div>
+            <div class="tab-content hidden" data-tab-content="single">
+                <form id="singleForm" class="form-grid">
+                    <div class="form-field">
+                        <label for="singleInput">Входные данные</label>
+                        <textarea id="singleInput" rows="1" spellcheck="false"></textarea>
+                    </div>
+                    <div class="form-field">
+                        <label for="singleOutput">Выходные данные</label>
+                        <textarea id="singleOutput" rows="1" spellcheck="false"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="primary">Добавить тест</button>
+                        <button type="button" id="clearSingle" class="secondary">Очистить поля</button>
+                    </div>
+                </form>
+            </div>
+            <div class="tab-content" data-tab-content="bulk">
+                <form id="bulkForm" class="form-grid">
+                    <div class="form-field">
+                        <label for="tablePasteArea">Вставьте таблицу с парами столбцов (вход, выход)</label>
+                        <div id="tablePasteArea" class="table-paste-area" tabindex="0" role="textbox" aria-multiline="true">
+                            <p id="tableHint" class="table-hint">Нажмите сюда и вставьте (Ctrl+V) таблицу из Excel или Google Sheets. Будут использованы первые два столбца.</p>
+                            <div id="tablePreview" class="table-preview" aria-live="polite"></div>
+                        </div>
+                        <p class="hint">Можно редактировать значения прямо в таблице перед добавлением.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="primary">Добавить все тесты</button>
+                        <button type="button" id="clearBulk" class="secondary">Очистить таблицу</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="panel list-panel">
+            <div class="panel-header">
+                <h2>Текущий состав набора</h2>
+                <span id="testsCount" class="badge">0 тестов</span>
+            </div>
+            <div id="testsList" class="tests-list empty-state">
+                <p>Пока нет добавленных тестов. Используйте формы выше, чтобы создать пары входных и выходных данных.</p>
+            </div>
+        </section>
+        <div id="status" role="status" aria-live="polite"></div>
+    </main>
+
+    <div id="editModal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+            <form id="editForm" class="modal-content">
+                <div class="modal-header">
+                    <h3 id="editModalTitle">Редактирование теста</h3>
+                    <button type="button" class="icon-button" data-close aria-label="Закрыть">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-field">
+                        <label for="editInput">Входные данные</label>
+                        <textarea id="editInput" rows="1" spellcheck="false"></textarea>
+                    </div>
+                    <div class="form-field">
+                        <label for="editOutput">Выходные данные</label>
+                        <textarea id="editOutput" rows="1" spellcheck="false"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="primary">Сохранить</button>
+                    <button type="button" class="secondary" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
