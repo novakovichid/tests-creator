@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Tests Creator Toolkit",
+  "description": "Контент-скрипт, который встраивает конструктор тестов в интерфейсы LMS по маркерам DOM.",
+  "version": "0.1.0",
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "panel.html",
+        "styles/style.css",
+        "src/app.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
