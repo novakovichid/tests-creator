@@ -380,15 +380,20 @@
     }
 
     function saveState() {
+        const sanitizedTests = tests.map(item => ({
+            input: normalizeNewlines(item.input),
+            output: normalizeNewlines(item.output)
+        }));
+
         const state = {
-            tests,
+            tests: sanitizedTests,
             archiveName: archiveNameInput.value
         };
 
         if (tablePasteArea) {
             state.bulkTableData = bulkTableData.map(item => ({
-                input: typeof item.input === 'string' ? item.input : '',
-                output: typeof item.output === 'string' ? item.output : ''
+                input: typeof item.input === 'string' ? normalizeNewlines(item.input) : '',
+                output: typeof item.output === 'string' ? normalizeNewlines(item.output) : ''
             }));
         }
 
@@ -418,15 +423,15 @@
             const state = JSON.parse(stored);
             if (Array.isArray(state.tests)) {
                 tests = state.tests.map(item => ({
-                    input: typeof item.input === 'string' ? item.input : '',
-                    output: typeof item.output === 'string' ? item.output : ''
+                    input: typeof item.input === 'string' ? normalizeNewlines(item.input) : '',
+                    output: typeof item.output === 'string' ? normalizeNewlines(item.output) : ''
                 }));
             }
             if (Array.isArray(state.bulkTableData)) {
                 bulkTableData = state.bulkTableData
                     .map(item => ({
-                        input: typeof item.input === 'string' ? item.input : '',
-                        output: typeof item.output === 'string' ? item.output : ''
+                        input: typeof item.input === 'string' ? normalizeNewlines(item.input) : '',
+                        output: typeof item.output === 'string' ? normalizeNewlines(item.output) : ''
                     }));
             }
             if (typeof state.archiveName === 'string' && state.archiveName.trim()) {
@@ -535,7 +540,10 @@
     }
 
     function addTest(input, output) {
-        tests.push({ input, output });
+        tests.push({
+            input: normalizeNewlines(input),
+            output: normalizeNewlines(output)
+        });
         saveState();
         renderTests();
     }
@@ -640,12 +648,19 @@
         return rows;
     }
 
+    function normalizeNewlines(value) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return String(value).replace(/\r\n?/g, '\n');
+    }
+
     function parseBulkInput(rawText) {
         if (!rawText) {
             return [];
         }
 
-        const normalizedText = rawText.replace(/\r\n?/g, '\n');
+        const normalizedText = normalizeNewlines(rawText);
         const delimiter = detectDelimiter(normalizedText);
         const rows = parseDelimitedRows(normalizedText, delimiter);
 
@@ -680,7 +695,7 @@
         const parsed = rows
             .map((row, index) => {
                 const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
-                    cell.textContent.replace(/\r\n?/g, '\n')
+                    normalizeNewlines(cell.textContent)
                 );
                 if (!cells.length) {
                     return null;
@@ -702,8 +717,8 @@
             return [];
         }
         const normalized = rows.map(item => ({
-            input: typeof item.input === 'string' ? item.input : '',
-            output: typeof item.output === 'string' ? item.output : ''
+            input: typeof item.input === 'string' ? normalizeNewlines(item.input) : '',
+            output: typeof item.output === 'string' ? normalizeNewlines(item.output) : ''
         }));
         if (!normalized.length) {
             return [];
@@ -832,7 +847,7 @@
         if (!bulkTableData[rowIndex]) {
             return;
         }
-        bulkTableData[rowIndex][field] = cell.textContent;
+        bulkTableData[rowIndex][field] = normalizeNewlines(cell.textContent);
         saveState();
     }
 
@@ -874,7 +889,10 @@
             return;
         }
 
-        bulkTableData = parsed;
+        bulkTableData = parsed.map(item => ({
+            input: normalizeNewlines(item.input),
+            output: normalizeNewlines(item.output)
+        }));
         renderBulkTable();
         saveState();
         setStatus(`Таблица загружена: ${bulkTableData.length} ${declineTests(bulkTableData.length)}.`, 'success');
@@ -888,6 +906,10 @@
         return `${sanitized}_${timestamp}.zip`;
     }
 
+    function normalizeNewlinesForArchive(value) {
+        return normalizeNewlines(value).replace(/\n/g, '\r\n');
+    }
+
     async function downloadArchive() {
         if (!tests.length) {
             setStatus('Добавьте хотя бы один тест перед выгрузкой архива.', 'error');
@@ -897,8 +919,10 @@
         const zip = new JSZip();
         tests.forEach((test, index) => {
             const baseName = String(index + 1);
-            zip.file(baseName, encodeWindows1251(test.input), { binary: true });
-            zip.file(`${baseName}.a`, encodeWindows1251(test.output), { binary: true });
+            const normalizedInput = normalizeNewlinesForArchive(test.input);
+            const normalizedOutput = normalizeNewlinesForArchive(test.output);
+            zip.file(baseName, encodeWindows1251(normalizedInput), { binary: true });
+            zip.file(`${baseName}.a`, encodeWindows1251(normalizedOutput), { binary: true });
         });
 
         try {
@@ -1023,8 +1047,8 @@
             }
             prepared.forEach(item => {
                 tests.push({
-                    input: item.input,
-                    output: item.output
+                    input: normalizeNewlines(item.input),
+                    output: normalizeNewlines(item.output)
                 });
             });
             bulkTableData = [];
@@ -1087,8 +1111,8 @@
                 return;
             }
             tests[currentEditIndex] = {
-                input: editInput.value,
-                output: editOutput.value
+                input: normalizeNewlines(editInput.value),
+                output: normalizeNewlines(editOutput.value)
             };
             saveState();
             renderTests();

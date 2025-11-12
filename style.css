@@ -300,6 +300,7 @@ button:disabled {
 
 .pasted-table td[contenteditable="true"] {
     min-width: 140px;
+    white-space: pre-wrap;
 }
 
 .pasted-table td:focus {
