@@ -681,6 +681,39 @@
         return normalizeBulkRows(parsed);
     }
 
+    function extractCellText(cell) {
+        if (!cell) {
+            return '';
+        }
+
+        const doc = cell.ownerDocument;
+        const clone = cell.cloneNode(true);
+
+        clone.querySelectorAll('style, script').forEach(element => {
+            element.remove();
+        });
+
+        clone.querySelectorAll('br').forEach(br => {
+            br.replaceWith('\n');
+        });
+
+        const blockElements = [
+            'DIV', 'P', 'LI', 'UL', 'OL', 'TABLE', 'THEAD', 'TBODY', 'TFOOT',
+            'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
+        ];
+        const blockSelector = blockElements.map(tag => tag.toLowerCase()).join(',');
+
+        clone.querySelectorAll(blockSelector).forEach(element => {
+            if (element.textContent.endsWith('\n')) {
+                return;
+            }
+            element.appendChild(doc.createTextNode('\n'));
+        });
+
+        const text = clone.textContent || '';
+        return text.replace(/\u00a0/g, ' ').replace(/\n+$/u, '');
+    }
+
     function parseTableFromHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -695,7 +728,7 @@
         const parsed = rows
             .map((row, index) => {
                 const cells = Array.from(row.querySelectorAll('th, td')).map(cell =>
-                    normalizeNewlines(cell.textContent)
+                    normalizeNewlines(extractCellText(cell))
                 );
                 if (!cells.length) {
                     return null;
