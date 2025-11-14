@@ -952,8 +952,12 @@
         const zip = new JSZip();
         tests.forEach((test, index) => {
             const baseName = String(index + 1);
-            const normalizedInput = normalizeNewlinesForArchive(test.input);
+            let normalizedInput = normalizeNewlinesForArchive(test.input);
             const normalizedOutput = normalizeNewlinesForArchive(test.output);
+
+            if (!normalizedInput) {
+                normalizedInput = '\r\n';
+            }
             zip.file(baseName, encodeWindows1251(normalizedInput), { binary: true });
             zip.file(`${baseName}.a`, encodeWindows1251(normalizedOutput), { binary: true });
         });
